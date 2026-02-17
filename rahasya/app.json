@@ -20,7 +20,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.krishnaavtar.rahasya",
+      "package": "com.trivixam.rahasya",
       "versionCode": 1
     },
     "web": {
@@ -53,7 +53,7 @@
         "projectId": "69f1fb7f-c8a5-4294-9d83-5366cdf7123d"
       }
     },
-    "owner": "krishnaavtar",
+    "owner": "trivixam",
     "runtimeVersion": "1.0.0"
   }
 }
