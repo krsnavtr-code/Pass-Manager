@@ -15,7 +15,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Fonts } from "@/constants/theme";
 
 const { width } = Dimensions.get("window");
-const SIDEBAR_WIDTH = width * 0.8;
+const SIDEBAR_WIDTH = width * 0.4;
 
 interface SidebarProps {
   isVisible: boolean;
