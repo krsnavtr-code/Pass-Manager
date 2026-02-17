@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Rahasya",
-    "slug": "Rahasya",
+    "name": "rahasya",
+    "slug": "rahasya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.jpg",
-    "scheme": "Rahasya",
+    "scheme": "rahasya",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -20,7 +20,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.trivixam.Rahasya"
+      "package": "com.krishnaavtar.rahasya",
+      "versionCode": 1
     },
     "web": {
       "output": "static",
@@ -49,10 +50,10 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "df45e8c1-039f-48d9-a81e-215cb833bc23"
+        "projectId": "69f1fb7f-c8a5-4294-9d83-5366cdf7123d"
       }
     },
-    "owner": "trivixam",
+    "owner": "krishnaavtar",
     "runtimeVersion": "1.0.0"
   }
 }
