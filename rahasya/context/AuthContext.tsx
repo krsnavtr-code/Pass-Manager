@@ -1,7 +1,13 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { createApiClient } from '@/lib/api';
-import { clearToken, getToken, saveToken } from '@/lib/storage';
+import { createApiClient } from "@/lib/api";
+import { clearToken, getToken, saveToken } from "@/lib/storage";
 
 type AuthUser = { id: string; name: string; email: string };
 
@@ -38,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clearToken().catch(() => undefined);
         },
       }),
-    [token]
+    [token],
   );
 
   useEffect(() => {
@@ -51,7 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (stored) {
           setToken(stored);
           try {
-            const profile = await createApiClient({ getAuthToken: async () => stored }).getProfile();
+            const profile = await createApiClient({
+              getAuthToken: async () => stored,
+            }).getProfile();
             if (profile?.success && profile.data?.user) {
               setUser({
                 id: profile.data.user.id,
@@ -77,7 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signIn(email: string, password: string) {
     const res = await api.login({ email, password });
-    if (!res.success || !res.token || !res.user) throw new Error(res.message || 'Login failed');
+    if (!res.success || !res.token || !res.user)
+      throw new Error(res.message || "Login failed");
 
     await saveToken(res.token);
     setToken(res.token);
@@ -92,7 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     masterPassword: string;
   }) {
     const res = await api.register(params);
-    if (!res.success || !res.token || !res.user) throw new Error(res.message || 'Register failed');
+    if (!res.success || !res.token || !res.user)
+      throw new Error(res.message || "Register failed");
 
     await saveToken(res.token);
     setToken(res.token);
@@ -120,6 +130,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
