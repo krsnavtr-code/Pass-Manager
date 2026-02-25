@@ -134,6 +134,11 @@ const loginUser = async (req, res) => {
       });
     }
 
+    // Update login statistics
+    user.lastLogin = new Date();
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save();
+
     // Check if user already has an active session
     const existingSession = await Session.findOne({
       user: user._id,

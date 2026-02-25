@@ -31,10 +31,12 @@ app.get("/", (req, res) => {
 // Import routes
 const authRoutes = require("./routes/auth.js");
 const passwordRoutes = require("./routes/passwords.js");
+const adminRoutes = require("./routes/admin.js");
 
 // Mount routes
 app.use("/api/auth", authRoutes);
 app.use("/api/passwords", passwordRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

@@ -37,6 +37,10 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  role?: "user" | "admin";
+  isActive?: boolean;
+  lastLogin?: string;
+  loginCount?: number;
   createdAt: string;
 }
 
