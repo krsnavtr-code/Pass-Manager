@@ -2,12 +2,32 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User.js");
 const Session = require("../models/Session.js");
 const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 
 // Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || "30d",
   });
+};
+
+// Email transporter setup
+const createEmailTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+};
+
+// Generate OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 // @desc    Register user
@@ -284,10 +304,203 @@ const getUserProfile = async (req, res) => {
   }
 };
 
+// @desc    Initiate master password reset
+// @route   POST /api/auth/reset-master-request
+// @access  Public
+const requestMasterPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this email",
+      });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store OTP in user document (you might want to create a separate collection for this)
+    user.resetOTP = otp;
+    user.resetOTPExpiry = otpExpiry;
+    await user.save();
+
+    // Send email with OTP
+    const transporter = createEmailTransporter();
+
+    const mailOptions = {
+      from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
+      to: user.email,
+      subject: "Master Password Reset OTP - Password Manager",
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 24px;">Master Password Reset</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Password Manager Security</p>
+          </div>
+          
+          <div style="background: #f9f9f9; padding: 30px; border-radius: 10px; margin-top: 20px;">
+            <h2 style="color: #333; margin-bottom: 20px;">Your OTP Code</h2>
+            <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; border: 2px dashed #667eea;">
+              <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 5px;">${otp}</span>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+              <p style="margin: 0; color: #856404; font-size: 14px;">
+                <strong>Important:</strong> This OTP will expire in 10 minutes. For your security, never share this code with anyone.
+              </p>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #d1ecf1; border-radius: 8px; border-left: 4px solid #17a2b8;">
+              <p style="margin: 0; color: #0c5460; font-size: 14px;">
+                <strong>Note:</strong> Resetting your master password will require you to re-encrypt all your stored passwords. Make sure you have access to your email.
+              </p>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin-top: 30px; color: #666; font-size: 12px;">
+            <p>If you didn't request this reset, please ignore this email.</p>
+            <p>This is an automated message from Password Manager.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({
+      success: true,
+      message: "OTP sent to your email. Please check your inbox.",
+    });
+  } catch (error) {
+    console.error("Master password reset request error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// @desc    Verify OTP and reset master password
+// @route   POST /api/auth/reset-master-verify
+// @access  Public
+const verifyAndResetMasterPassword = async (req, res) => {
+  try {
+    const { email, otp, newMasterPassword } = req.body;
+
+    if (!email || !otp || !newMasterPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // Find user with valid OTP
+    const user = await User.findOne({
+      email,
+      resetOTP: otp,
+      resetOTPExpiry: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    // Hash new master password
+    const salt = await bcrypt.genSalt(12);
+    const masterPasswordHash = await bcrypt.hash(newMasterPassword, salt);
+
+    // Update master password and clear OTP
+    user.masterPasswordHash = masterPasswordHash;
+    user.resetOTP = undefined;
+    user.resetOTPExpiry = undefined;
+    await user.save();
+
+    // Send confirmation email
+    const transporter = createEmailTransporter();
+
+    const mailOptions = {
+      from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
+      to: user.email,
+      subject: "Master Password Successfully Reset - Password Manager",
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
+          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 30px; border-radius: 10px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 24px;">Password Reset Successful</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Password Manager Security</p>
+          </div>
+          
+          <div style="background: #f9f9f9; padding: 30px; border-radius: 10px; margin-top: 20px;">
+            <h2 style="color: #333; margin-bottom: 20px;">Your Master Password Has Been Reset</h2>
+            
+            <div style="background: #d4edda; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; margin-bottom: 20px;">
+              <p style="margin: 0; color: #155724; font-size: 16px;">
+                ✅ Your master password has been successfully reset.
+              </p>
+            </div>
+            
+            <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
+              <h3 style="margin-top: 0; color: #856404;">Important Next Steps:</h3>
+              <ul style="color: #856404; margin: 10px 0; padding-left: 20px;">
+                <li>Log out of all active sessions</li>
+                <li>Log back in with your new master password</li>
+                <li>Re-encrypt any passwords that may need updating</li>
+                <li>Store your new master password in a secure location</li>
+              </ul>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.FRONTEND_URL}/login" style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                Go to Login
+              </a>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin-top: 30px; color: #666; font-size: 12px;">
+            <p>If you didn't make this change, please contact support immediately.</p>
+            <p>This is an automated message from Password Manager.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({
+      success: true,
+      message:
+        "Master password reset successfully. Please log in with your new password.",
+    });
+  } catch (error) {
+    console.error("Master password reset verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   verifyMasterPassword,
   validateSession,
   getUserProfile,
+  requestMasterPasswordReset,
+  verifyAndResetMasterPassword,
 };

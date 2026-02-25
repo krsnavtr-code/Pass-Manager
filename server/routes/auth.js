@@ -5,6 +5,8 @@ const {
   verifyMasterPassword,
   validateSession,
   getUserProfile,
+  requestMasterPasswordReset,
+  verifyAndResetMasterPassword,
 } = require("../controllers/authController.js");
 const protect = require("../middleware/auth.js");
 
@@ -15,5 +17,7 @@ router.post("/login", loginUser);
 router.post("/verify-master", protect, verifyMasterPassword);
 router.get("/session", protect, validateSession);
 router.get("/profile", protect, getUserProfile);
+router.post("/reset-master-request", requestMasterPasswordReset);
+router.post("/reset-master-verify", verifyAndResetMasterPassword);
 
 module.exports = router;

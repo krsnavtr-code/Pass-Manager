@@ -29,6 +29,14 @@ const userSchema = new mongoose.Schema({
     required: [true, "Master password is required"],
     select: false,
   },
+  resetOTP: {
+    type: String,
+    select: false,
+  },
+  resetOTPExpiry: {
+    type: Date,
+    select: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
