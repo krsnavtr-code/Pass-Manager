@@ -372,6 +372,10 @@ export default function HelpPage() {
                     onChange={(e) => setNewMasterPassword(e.target.value)}
                     required
                     minLength={6}
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                     className="w-full px-4 py-2.5 border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
                     placeholder="Enter new master password"
                   />
@@ -387,6 +391,10 @@ export default function HelpPage() {
                     onChange={(e) => setConfirmMasterPassword(e.target.value)}
                     required
                     minLength={6}
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                     className="w-full px-4 py-2.5 border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
                     placeholder="Confirm new master password"
                   />

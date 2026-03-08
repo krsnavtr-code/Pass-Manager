@@ -68,7 +68,16 @@ passwordSchema.methods.decryptPassword = function (masterPassword) {
       this.encryptedPassword,
       masterPassword,
     );
-    return decrypted.toString(CryptoJS.enc.Utf8);
+
+    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+
+    if (!decryptedString) {
+      throw new Error(
+        "Decryption resulted in empty string - incorrect master password",
+      );
+    }
+
+    return decryptedString;
   } catch (error) {
     throw new Error("Failed to decrypt password. Invalid master password.");
   }

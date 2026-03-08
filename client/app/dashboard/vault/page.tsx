@@ -214,18 +214,22 @@ export default function PasswordsPage() {
         masterPasswordInput,
       );
       if (response.success) {
-        setDecryptedMap((prev) => ({
-          ...prev,
-          [decryptingId]:
-            response.data?.password || (response as any).password || "",
-        }));
-        setVisibleIds((prev) => ({ ...prev, [decryptingId]: true }));
-        setShowDecryptModal(false);
-        setMasterPasswordInput("");
-        setDecryptingId("");
+        const decryptedPassword = response.password || "";
+        if (decryptedPassword) {
+          setDecryptedMap((prev) => ({
+            ...prev,
+            [decryptingId]: decryptedPassword,
+          }));
+          setVisibleIds((prev) => ({ ...prev, [decryptingId]: true }));
+          setShowDecryptModal(false);
+          setMasterPasswordInput("");
+          setDecryptingId("");
+        } else {
+          setError("Please Enter Valid Master Password");
+        }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to decrypt password");
+      setError(err.message || "Please Enter Valid Master Password");
     }
   };
 
@@ -285,6 +289,10 @@ export default function PasswordsPage() {
               placeholder="Search website, username, or tags..."
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
               onChange={(e) => setSearchTerm(e.target.value)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
             />
           </div>
           <div className="relative">
@@ -406,6 +414,10 @@ export default function PasswordsPage() {
                   setFormData({ ...formData, password: e.target.value })
                 }
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 outline-none"
+                autoComplete="new-password"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
               />
             </div>
             <div className="space-y-1">
@@ -420,6 +432,10 @@ export default function PasswordsPage() {
                   setFormData({ ...formData, masterPassword: e.target.value })
                 }
                 className="w-full px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50/30 focus:border-blue-500 outline-none"
+                autoComplete="new-password"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
               />
             </div>
             <div className="lg:col-span-3 space-y-1">
@@ -664,6 +680,10 @@ export default function PasswordsPage() {
               placeholder="Enter your master password"
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none mb-4"
               autoFocus
+              autoComplete="new-password"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleDecryptSubmit();

@@ -168,6 +168,10 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     className="w-full pl-10 pr-10 py-3 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                   />
                   <button
                     type="button"
@@ -201,6 +205,10 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     className="w-full pl-10 pr-10 py-3 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                   />
                   <button
                     type="button"
@@ -240,6 +248,10 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     placeholder="The one password to rule them all"
                     className="w-full pl-4 pr-10 py-3 bg-white border border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                   />
                   <button
                     type="button"
