@@ -214,7 +214,8 @@ export default function PasswordsPage() {
         masterPasswordInput,
       );
       if (response.success) {
-        const decryptedPassword = response.password || "";
+        const decryptedPassword =
+          response.data?.password || (response as any).password || "";
         if (decryptedPassword) {
           setDecryptedMap((prev) => ({
             ...prev,
