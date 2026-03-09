@@ -17,11 +17,11 @@ import apiClient from "@/lib/api";
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
-    password: "",
+    masterPassword: "",
   });
+  const [showMasterPassword, setShowMasterPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,10 +107,10 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center ml-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">
-                    Password
+                    Master Password
                   </label>
                   <Link
-                    href="#"
+                    href="/dashboard/help"
                     className="text-xs font-semibold text-blue-600 hover:text-blue-700"
                   >
                     Forgot?
@@ -119,13 +119,13 @@ export default function LoginPage() {
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                   <input
-                    name="password"
-                    type={showPassword ? "text" : "password"}
+                    name="masterPassword"
+                    type={showMasterPassword ? "text" : "password"}
                     required
-                    value={formData.password}
+                    value={formData.masterPassword}
                     onChange={handleChange}
                     className="w-full pl-10 pr-12 py-3 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
-                    placeholder="••••••••"
+                    placeholder="•••••••"
                     autoComplete="new-password"
                     autoCorrect="off"
                     autoCapitalize="off"
@@ -133,10 +133,10 @@ export default function LoginPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowMasterPassword(!showMasterPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {showPassword ? (
+                    {showMasterPassword ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
                       <Eye className="w-4 h-4" />

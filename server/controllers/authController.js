@@ -4,6 +4,7 @@ const Session = require("../models/Session.js");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const CryptoJS = require("crypto-js");
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -35,16 +36,16 @@ const generateOTP = () => {
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, masterPassword } = req.body;
+    const { name, email, masterPassword, confirmPassword } = req.body;
 
-    if (!name || !email || !password || !masterPassword) {
+    if (!name || !email || !masterPassword || !confirmPassword) {
       return res.status(400).json({
         success: false,
-        message: "Please provide all required fields",
+        message: "Please add all fields",
       });
     }
 
-    if (password !== confirmPassword) {
+    if (masterPassword !== confirmPassword) {
       return res.status(400).json({
         success: false,
         message: "Passwords do not match",
@@ -61,12 +62,15 @@ const registerUser = async (req, res) => {
       });
     }
 
+    // Generate recovery key (32-character random string)
+    const recoveryKey = crypto.randomBytes(16).toString("hex");
+
     // Create user
     const user = await User.create({
       name,
       email,
-      password,
       masterPasswordHash: masterPassword, // This will be hashed in pre-save hook
+      recoveryKey: recoveryKey, // This will be hashed in pre-save hook
     });
 
     // Create session in database
@@ -85,6 +89,7 @@ const registerUser = async (req, res) => {
       success: true,
       token,
       sessionId: session._id,
+      recoveryKey: recoveryKey, // Send the recovery key to user
       user: {
         id: user._id,
         name: user.name,
@@ -105,17 +110,17 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, masterPassword } = req.body;
 
-    if (!email || !password) {
+    if (!email || !masterPassword) {
       return res.status(400).json({
         success: false,
-        message: "Please provide email and password",
+        message: "Please provide email and master password",
       });
     }
 
     // Check for user
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email }).select("+masterPasswordHash");
 
     if (!user) {
       return res.status(401).json({
@@ -124,8 +129,8 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check if password matches
-    const isMatch = await user.matchPassword(password);
+    // Check if master password matches
+    const isMatch = await user.matchMasterPassword(masterPassword);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -403,7 +408,7 @@ const requestMasterPasswordReset = async (req, res) => {
 // @access  Public
 const verifyAndResetMasterPassword = async (req, res) => {
   try {
-    const { email, otp, newMasterPassword } = req.body;
+    const { email, otp, newMasterPassword, currentMasterPassword } = req.body;
 
     if (!email || !otp || !newMasterPassword) {
       return res.status(400).json({
@@ -424,6 +429,40 @@ const verifyAndResetMasterPassword = async (req, res) => {
         success: false,
         message: "Invalid or expired OTP",
       });
+    }
+
+    // Get all passwords for this user
+    const Password = require("../models/Password.js");
+    const userPasswords = await Password.find({ user: user._id });
+
+    let reencryptedPasswords = 0;
+    let failedPasswords = 0;
+
+    // Re-encrypt all passwords with new master password if current master password is provided
+    if (currentMasterPassword && userPasswords.length > 0) {
+      for (const passwordEntry of userPasswords) {
+        try {
+          // Decrypt with current master password
+          const decrypted = passwordEntry.decryptPassword(
+            currentMasterPassword,
+          );
+
+          // Re-encrypt with new master password
+          const reencrypted = CryptoJS.AES.encrypt(
+            decrypted,
+            newMasterPassword,
+          ).toString();
+          passwordEntry.encryptedPassword = reencrypted;
+          await passwordEntry.save();
+          reencryptedPasswords++;
+        } catch (decryptError) {
+          failedPasswords++;
+          console.error(
+            `Failed to re-encrypt password for ${passwordEntry.website}:`,
+            decryptError.message,
+          );
+        }
+      }
     }
 
     // Hash new master password
@@ -486,13 +525,136 @@ const verifyAndResetMasterPassword = async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
+    // Prepare response message
+    let responseMessage =
+      "Master password reset successfully. Please log in with your new password.";
+
+    if (currentMasterPassword && userPasswords.length > 0) {
+      responseMessage = `Master password reset successfully! ${reencryptedPasswords} passwords re-encrypted with new master password${failedPasswords > 0 ? ` (${failedPasswords} failed)` : ""}. Please log in with your new password.`;
+    } else if (userPasswords.length > 0) {
+      responseMessage = `Master password reset successfully. ⚠️ You have ${userPasswords.length} existing passwords that were encrypted with your old master password. You will need to re-enter them manually or use the master password migration feature.`;
+    }
+
     res.json({
       success: true,
-      message:
-        "Master password reset successfully. Please log in with your new password.",
+      message: responseMessage,
+      reencryptedPasswords,
+      totalPasswords: userPasswords.length,
+      failedPasswords,
     });
   } catch (error) {
     console.error("Master password reset verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// @desc    Verify recovery key and reset master password
+// @route   POST /api/auth/reset-master-with-recovery
+// @access  Public
+const resetMasterWithRecoveryKey = async (req, res) => {
+  try {
+    const { email, recoveryKey, newMasterPassword } = req.body;
+
+    if (!email || !recoveryKey || !newMasterPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // Find user with recovery key
+    const user = await User.findOne({ email }).select("+recoveryKey");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this email",
+      });
+    }
+
+    // Verify recovery key
+    const isRecoveryKeyValid = await bcrypt.compare(
+      recoveryKey,
+      user.recoveryKey,
+    );
+    if (!isRecoveryKeyValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid recovery key",
+      });
+    }
+
+    // Get all passwords for this user
+    const Password = require("../models/Password.js");
+    const userPasswords = await Password.find({ user: user._id });
+
+    // Hash new master password
+    const salt = await bcrypt.genSalt(12);
+    const masterPasswordHash = await bcrypt.hash(newMasterPassword, salt);
+
+    // Update master password
+    user.masterPasswordHash = masterPasswordHash;
+    await user.save();
+
+    // Send confirmation email
+    const transporter = createEmailTransporter();
+    const mailOptions = {
+      from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
+      to: user.email,
+      subject: "Master Password Reset Using Recovery Key - Password Manager",
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
+          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 30px; border-radius: 10px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 24px;">Recovery Successful</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Password Manager Security</p>
+          </div>
+          
+          <div style="background: #f9f9f9; padding: 30px; border-radius: 10px; margin-top: 20px;">
+            <h2 style="color: #333; margin-bottom: 20px;">Master Password Reset Complete</h2>
+            
+            <div style="background: #d4edda; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; margin-bottom: 20px;">
+              <p style="margin: 0; color: #155724; font-size: 16px;">
+                ✅ Your master password has been successfully reset using your recovery key.
+              </p>
+            </div>
+            
+            <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
+              <h3 style="margin-top: 0; color: #856404;">Important Information:</h3>
+              <ul style="color: #856404; margin: 10px 0; padding-left: 20px;">
+                <li>You have ${userPasswords.length} passwords in your vault</li>
+                <li>Your passwords remain secure and accessible</li>
+                <li>Log in with your new master password to access your vault</li>
+                <li>Store your new master password in a secure location</li>
+              </ul>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.FRONTEND_URL}/login" style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                Go to Login
+              </a>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin-top: 30px; color: #666; font-size: 12px;">
+            <p>If you didn't make this change, please contact support immediately.</p>
+            <p>This is an automated message from Password Manager.</p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({
+      success: true,
+      message: `Master password reset successfully! You have ${userPasswords.length} passwords in your vault that remain accessible. Please log in with your new password.`,
+      totalPasswords: userPasswords.length,
+    });
+  } catch (error) {
+    console.error("Recovery key reset error:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -508,4 +670,5 @@ module.exports = {
   getUserProfile,
   requestMasterPasswordReset,
   verifyAndResetMasterPassword,
+  resetMasterWithRecoveryKey,
 };

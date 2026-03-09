@@ -32,6 +32,7 @@ export default function HelpPage() {
 
   // Master password reset states
   const [resetOTP, setResetOTP] = useState("");
+  const [currentMasterPassword, setCurrentMasterPassword] = useState("");
   const [newMasterPassword, setNewMasterPassword] = useState("");
   const [confirmMasterPassword, setConfirmMasterPassword] = useState("");
   const [resetStep, setResetStep] = useState<"idle" | "otp-sent" | "verified">(
@@ -251,6 +252,7 @@ export default function HelpPage() {
             email: user.email,
             otp: resetOTP,
             newMasterPassword,
+            currentMasterPassword,
           }),
         },
       );
@@ -259,11 +261,19 @@ export default function HelpPage() {
 
       if (data.success) {
         setResetStep("verified");
-        setResetSuccess(
-          "Master password reset successfully! You can now log in with your new password.",
-        );
+        let successMessage =
+          "Master password reset successfully! You can now log in with your new password.";
+
+        if (data.reencryptedPasswords > 0) {
+          successMessage = `✅ Master password reset successfully! ${data.reencryptedPasswords} passwords automatically migrated to your new master password${data.failedPasswords > 0 ? ` (${data.failedPasswords} failed)` : ""}. You can now log in with your new password.`;
+        } else if (data.totalPasswords > 0 && !currentMasterPassword) {
+          successMessage = `⚠️ Master password reset successfully! You have ${data.totalPasswords} existing passwords. Since you didn't provide your current master password, you'll need to re-enter these passwords manually.`;
+        }
+
+        setResetSuccess(successMessage);
         // Reset form
         setResetOTP("");
+        setCurrentMasterPassword("");
         setNewMasterPassword("");
         setConfirmMasterPassword("");
       } else {
@@ -397,6 +407,28 @@ export default function HelpPage() {
                     spellCheck="false"
                     className="w-full px-4 py-2.5 border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all"
                     placeholder="Confirm new master password"
+                  />
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <label className="block text-sm font-medium text-blue-700 mb-2">
+                    Current Master Password (Optional - for password migration)
+                  </label>
+                  <p className="text-xs text-blue-600 mb-2">
+                    Enter your current master password to automatically migrate
+                    all existing passwords to the new one. If you don't remember
+                    it, leave this blank and re-enter your passwords manually.
+                  </p>
+                  <input
+                    type="password"
+                    value={currentMasterPassword}
+                    onChange={(e) => setCurrentMasterPassword(e.target.value)}
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    className="w-full px-4 py-2.5 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    placeholder="Enter current master password (optional)"
                   />
                 </div>
 

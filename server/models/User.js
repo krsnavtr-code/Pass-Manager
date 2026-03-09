@@ -13,20 +13,16 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
-    match: [
-      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-      "Please add a valid email",
-    ],
-  },
-  password: {
-    type: String,
-    required: [true, "Please add a password"],
-    minlength: 6,
-    select: false,
+    match: [/\S+@\S+\.\S+/, "Please add a valid email"],
   },
   masterPasswordHash: {
     type: String,
     required: [true, "Master password is required"],
+    select: false,
+  },
+  recoveryKey: {
+    type: String,
+    required: [true, "Recovery key is required"],
     select: false,
   },
   resetOTP: {
@@ -63,29 +59,29 @@ const userSchema = new mongoose.Schema({
 userSchema.pre("save", async function () {
   const user = this;
 
-  // Hash password if modified
-  if (user.isModified("password")) {
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(user.password, salt);
-  }
-
   // Hash master password if modified
   if (user.isModified("masterPasswordHash")) {
     const salt = await bcrypt.genSalt(10);
     user.masterPasswordHash = await bcrypt.hash(user.masterPasswordHash, salt);
   }
-});
 
-// Match user entered password to hashed password in database
-userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
-};
+  // Hash recovery key if modified
+  if (user.isModified("recoveryKey")) {
+    const salt = await bcrypt.genSalt(10);
+    user.recoveryKey = await bcrypt.hash(user.recoveryKey, salt);
+  }
+});
 
 // Match master password
 userSchema.methods.matchMasterPassword = async function (
   enteredMasterPassword,
 ) {
   return await bcrypt.compare(enteredMasterPassword, this.masterPasswordHash);
+};
+
+// Match recovery key
+userSchema.methods.matchRecoveryKey = async function (enteredRecoveryKey) {
+  return await bcrypt.compare(enteredRecoveryKey, this.recoveryKey);
 };
 
 const User = mongoose.model("User", userSchema);

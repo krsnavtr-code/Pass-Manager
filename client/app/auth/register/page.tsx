@@ -14,6 +14,8 @@ import {
   Loader2,
   ArrowRight,
   Info,
+  AlertCircle,
+  Copy,
 } from "lucide-react";
 import apiClient from "@/lib/api";
 
@@ -21,15 +23,15 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     masterPassword: "",
+    confirmPassword: "",
   });
-  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showMasterPassword, setShowMasterPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [recoveryKey, setRecoveryKey] = useState("");
+  const [showRecoveryKey, setShowRecoveryKey] = useState(false);
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,8 +46,8 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Account passwords do not match.");
+    if (formData.masterPassword !== formData.confirmPassword) {
+      setError("Master passwords do not match.");
       setLoading(false);
       return;
     }
@@ -54,13 +56,17 @@ export default function RegisterPage() {
       const response = await apiClient.register({
         name: formData.name,
         email: formData.email,
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
         masterPassword: formData.masterPassword,
+        confirmPassword: formData.confirmPassword,
       });
 
       if (response.success) {
-        router.push("/dashboard");
+        if (response.data?.recoveryKey) {
+          setRecoveryKey(response.data.recoveryKey);
+          setShowRecoveryKey(true);
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         setError(response.message || "Registration failed");
       }
@@ -153,22 +159,22 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Password */}
+              {/* Master Password */}
               <div className="space-y-1 md:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase ml-1">
-                  Password
+                  Master Password
                 </label>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                   <input
-                    name="password"
-                    type={showPassword ? "text" : "password"}
+                    name="masterPassword"
+                    type={showMasterPassword ? "text" : "password"}
                     required
-                    value={formData.password}
+                    value={formData.masterPassword}
                     onChange={handleChange}
-                    placeholder="••••••••"
+                    placeholder="•••••••"
                     className="w-full pl-10 pr-10 py-3 bg-slate-50/50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                    autoComplete="off"
+                    autoComplete="new-password"
                     autoCorrect="off"
                     autoCapitalize="off"
                     spellCheck="false"
@@ -176,12 +182,14 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     aria-label={
-                      showPassword ? "Hide password" : "Show password"
+                      showMasterPassword
+                        ? "Hide master password"
+                        : "Show master password"
                     }
-                    onClick={() => setShowPassword((v) => !v)}
+                    onClick={() => setShowMasterPassword((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    {showPassword ? (
+                    {showMasterPassword ? (
                       <EyeOff className="w-4 h-4" />
                     ) : (
                       <Eye className="w-4 h-4" />
@@ -190,10 +198,10 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Confirm Password */}
+              {/* Confirm Master Password */}
               <div className="space-y-1 md:col-span-2">
                 <label className="text-xs font-bold text-slate-500 uppercase ml-1">
-                  Confirm Password
+                  Confirm Master Password
                 </label>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
@@ -214,8 +222,8 @@ export default function RegisterPage() {
                     type="button"
                     aria-label={
                       showConfirmPassword
-                        ? "Hide confirm password"
-                        : "Show confirm password"
+                        ? "Hide confirm master password"
+                        : "Show confirm master password"
                     }
                     onClick={() => setShowConfirmPassword((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
@@ -226,55 +234,6 @@ export default function RegisterPage() {
                       <Eye className="w-4 h-4" />
                     )}
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Master Password Section - Highlighted */}
-            <div className="pt-2">
-              <div className="p-5 bg-blue-50/50 border border-blue-100 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2 text-blue-700">
-                  <Key className="w-4 h-4" />
-                  <label className="text-xs font-bold uppercase tracking-wider">
-                    Master Password
-                  </label>
-                </div>
-                <div className="relative">
-                  <input
-                    name="masterPassword"
-                    type={showMasterPassword ? "text" : "password"}
-                    required
-                    value={formData.masterPassword}
-                    onChange={handleChange}
-                    placeholder="The one password to rule them all"
-                    className="w-full pl-4 pr-10 py-3 bg-white border border-blue-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                    autoComplete="new-password"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck="false"
-                  />
-                  <button
-                    type="button"
-                    aria-label={
-                      showMasterPassword
-                        ? "Hide master password"
-                        : "Show master password"
-                    }
-                    onClick={() => setShowMasterPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-600 transition-colors"
-                  >
-                    {showMasterPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-                <div className="flex gap-2 items-start">
-                  <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                  <p className="text-[11px] leading-relaxed text-blue-600/80 font-medium">
-                    This is used to encrypt your vault. **Remember this**
-                  </p>
                 </div>
               </div>
             </div>
@@ -296,6 +255,66 @@ export default function RegisterPage() {
           </form>
         </div>
       </div>
+
+      {/* Recovery Key Modal */}
+      {showRecoveryKey && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 animate-in zoom-in-95">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Key className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                Save Your Recovery Key
+              </h2>
+              <p className="text-slate-600 text-sm">
+                This key can help you recover your passwords if you forget your
+                master password. Save it in a secure location.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6">
+              <div className="text-xs text-slate-500 uppercase tracking-wider mb-2 text-center">
+                Recovery Key
+              </div>
+              <div className="bg-white border border-slate-300 rounded-lg p-3 text-center font-mono text-lg tracking-wider text-slate-900 select-all">
+                {recoveryKey}
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+              <div className="flex gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  <strong>Important:</strong> Store this recovery key safely.
+                  You'll need it to reset your master password if you forget it.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(recoveryKey);
+                }}
+                className="flex-1 bg-slate-100 text-slate-700 px-4 py-3 rounded-xl font-medium hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Copy Key
+              </button>
+              <button
+                onClick={() => {
+                  setShowRecoveryKey(false);
+                  router.push("/dashboard");
+                }}
+                className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors"
+              >
+                I've Saved It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

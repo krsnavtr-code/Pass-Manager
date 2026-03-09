@@ -22,15 +22,14 @@ class ApiError extends Error {
 
 export interface LoginCredentials {
   email: string;
-  password: string;
+  masterPassword: string;
 }
 
 export interface RegisterData {
   name: string;
   email: string;
-  password: string;
-  confirmPassword: string;
   masterPassword: string;
+  confirmPassword: string;
 }
 
 export interface User {
@@ -183,14 +182,15 @@ class ApiClient {
 
   async register(
     userData: RegisterData,
-  ): Promise<ApiResponse<{ user: User; token: string }>> {
-    const response = await this.request<{ user: User; token: string }>(
-      "/auth/register",
-      {
-        method: "POST",
-        body: JSON.stringify(userData),
-      },
-    );
+  ): Promise<ApiResponse<{ user: User; token: string; recoveryKey?: string }>> {
+    const response = await this.request<{
+      user: User;
+      token: string;
+      recoveryKey?: string;
+    }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(userData),
+    });
 
     if (response.success && response.token) {
       this.setToken(response.token);

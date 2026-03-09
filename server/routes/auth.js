@@ -7,6 +7,7 @@ const {
   getUserProfile,
   requestMasterPasswordReset,
   verifyAndResetMasterPassword,
+  resetMasterWithRecoveryKey,
 } = require("../controllers/authController.js");
 const protect = require("../middleware/auth.js");
 
@@ -19,5 +20,6 @@ router.get("/session", protect, validateSession);
 router.get("/profile", protect, getUserProfile);
 router.post("/reset-master-request", requestMasterPasswordReset);
 router.post("/reset-master-verify", verifyAndResetMasterPassword);
+router.post("/reset-master-with-recovery", resetMasterWithRecoveryKey);
 
 module.exports = router;
